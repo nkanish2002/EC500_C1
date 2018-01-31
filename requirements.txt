@@ -1,4 +1,4 @@
 requests
 tweepy
 ffmpy
-
+wget
