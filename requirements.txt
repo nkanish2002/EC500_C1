@@ -2,3 +2,4 @@ requests
 tweepy
 ffmpy
 wget
+pillow
