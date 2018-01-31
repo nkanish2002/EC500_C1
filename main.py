@@ -5,6 +5,8 @@ import wget
 import os
 import json
 import subprocess
+from time import time
+from PIL import Image
 
 def conf_exists():
     return os.path.isfile("conf.js")
@@ -55,7 +57,7 @@ def get_media_files(api, screen_name):
                                     exclude_replies=True,
                                     max_id=last_id-1)
         count += len(more_tweets)
-        print("Read through " + count + " tweets")
+        print("Read through %d tweets" % count)
         # There are no more tweets
         if (len(more_tweets) == 0):
             break
@@ -70,12 +72,26 @@ def get_media_files(api, screen_name):
             media_files.add(media[0]['media_url'])
     return media_files
 
-def download_files(media_files, folder_name):
+def resize_image(image_name, size):
+    im = Image.open(image_name)
+    im.thumbnail(size, Image.ANTIALIAS)
+    im.save(image_name)
+
+def download_files(media_files, folder_name, limit=1000):
     if media_files:
         if not os.path.isdir(folder_name):
             os.mkdir(folder_name)
         for i, media_file in enumerate(media_files):
-            wget.download(media_file, out="%s/%d.jpg" % (folder_name, i))
+            if i < limit:
+                path = "%s/pic%04d.jpg" % (folder_name, i+1)
+                wget.download(media_file, out=path)
+                resize_image(path, (600,600))
+            else:
+                break
+
+def create_movie(name, folder):
+    cmd = ["ffmpeg", "-framerate", "1", "-i", folder +"/pic%04d.jpg", "-c:v", "libx264", "-r", "30", "-pix_fmt", "yuv420p", name]
+    return subprocess.call(cmd)
 
 def main():
     print("Starting process")
@@ -89,9 +105,10 @@ def main():
     media_files = get_media_files(api, screen_name)
     print("Images to be downloaded %d" % len(media_files))
     if media_files:
-        tmp_dir = "sljnfsldfjk"
+        tmp_dir = "tmp_%d" % (int(time()))
         download_files(media_files, tmp_dir)
-        FFMPEG_CMD = ["ffmpeg", "-r", "1", "-start_number", "1", "-i", tmp_dir + "/%d.jpg", "-vcodec", "libx264", "-crf", "25", "-pix_fmt", "yuv420p", "test.mp4"]
+        create_movie(tmp_dir+".mp4", tmp_dir)
+        os.rmdir(tmp_dir)
 
 if __name__ == "__main__":
     main()
