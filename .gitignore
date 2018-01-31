@@ -204,5 +204,7 @@ fabric.properties
 
 conf.js
 
+.idea/
+.idea/vcs.xml
 
 # End of https://www.gitignore.io/api/pycharm,osx,visualstudiocode
