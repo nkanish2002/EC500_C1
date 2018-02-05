@@ -202,7 +202,7 @@ fabric.properties
 !.vscode/extensions.json
 .history
 
-conf.js
+*.js
 
 .idea/
 .idea/vcs.xml
