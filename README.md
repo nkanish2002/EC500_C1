@@ -27,7 +27,7 @@ export GOOGLE_APPLICATION_CREDENTIALS=/Path/To/JSON/Project-sla123kn31231.json
     "twitter": {
         "consumer_key": "<your consumer key>",
         "consumer_secret": "<your consumer secret>"
-    },
+    }
 }
 ```
 
