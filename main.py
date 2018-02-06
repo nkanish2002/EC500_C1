@@ -32,7 +32,6 @@ def get_api():
         print("Please create a config file.")
         exit(1)
     conf = get_conf()
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = conf["google-vision-key"]
     auth = tweepy.OAuthHandler(conf["twitter"]["consumer_key"],
                                conf["twitter"]["consumer_secret"])
     if "access_token" in conf and "access_token_secret" in conf:
@@ -53,13 +52,14 @@ def get_api():
     return api
 
 
-def get_media_files(api, screen_name):
+def get_media_files(api, screen_name, limit = 100):
     # screen_name = input("Enter the User ID: ")
     tweets = api.user_timeline(screen_name=screen_name,
                                count=20, include_rts=False,
                                exclude_replies=True)
     last_id = tweets[-1].id
     count = 0
+    media_files = set()
     while (count < 3000):
         more_tweets = api.user_timeline(screen_name=screen_name,
                                         count=20,
@@ -67,20 +67,31 @@ def get_media_files(api, screen_name):
                                         exclude_replies=True,
                                         max_id=last_id - 1)
         count += len(more_tweets)
-        print("Read through %d tweets" % count)
+        print("Read through %d tweets" % count, end="\r")
         # There are no more tweets
-        if (len(more_tweets) == 0):
+        if (len(more_tweets) == 0 or len(media_files) > limit):
             break
         else:
             last_id = more_tweets[-1].id - 1
-            tweets = tweets + more_tweets
-
-    media_files = set()
-    for status in tweets:
-        media = status.entities.get('media', [])
-        if (len(media) > 0):
-            media_files.add(media[0]['media_url'])
+            for tw in more_tweets:
+                if len(media_files) > limit: break
+                media = tw.entities.get('media', [])
+                if (len(media) > 0):
+                    media_files.add(media[0]['media_url'])
+            # tweets = tweets + more_tweets
+    # media_files = set()
+    # for status in tweets:
+    #     media = status.entities.get('media', [])
+    #     if (len(media) > 0):
+    #         media_files.add(media[0]['media_url'])
     return media_files
+
+def convert_to_png(image_name):
+    im = Image.open(image_name)
+    new_name = "%s.png" % image_name
+    im.save("%s.png" % image_name)
+    os.remove(image_name)
+    return new_name
 
 
 def resize_image(im, size):
@@ -89,12 +100,12 @@ def resize_image(im, size):
         width = width - 1
     if height < size[1] and height % 2 != 0:
         height = height - 1
-    im.thumbnail((width, height), Image.ANTIALIAS)
+    im.resize(size, Image.LANCZOS)
     return im
 
 
 def overlay(im):
-    bg = Image.open("bg.jpg")
+    bg = Image.open("bg.png")
     bg.paste(im)
     return bg
 
@@ -116,14 +127,15 @@ def add_text(im, text, position):
     return im
 
 def process_image(image_name, client):
+    image_name = convert_to_png(image_name)
     labels = get_labels(client, image_name)
     im = Image.open(image_name)
     im = resize_image(im, (600, 600))
     im.save(image_name)
     im = Image.open(image_name)
     im = overlay(im)
-    text = "Labels: " + ",".join(labels[0:4])
-    im = add_text(im, text, (50, 700))
+    text = "Labels\n~~~~~\n" + "\n".join(labels[0:4])
+    im = add_text(im, text, (1200, 50))
     im.save(image_name)
 
 
@@ -134,36 +146,39 @@ def download_files(media_files, folder_name, limit=100):
         client = vision.ImageAnnotatorClient()
         for i, media_file in enumerate(media_files):
             if i < limit:
-                path = "%s/pic%04d.jpg" % (folder_name, i + 1)
+                path = "%s/pic%04d" % (folder_name, i + 1)
+                print("\tDownloading %s" % path, end="\r")
                 wget.download(media_file, out=path)
                 process_image(path, client)
             else:
                 break
+        print("\n")
 
 
 def create_movie(name, folder):
-    cmd = ["ffmpeg", "-framerate", "1", "-i", folder + "/pic%04d.jpg", "-c:v",
+    cmd = ["ffmpeg", "-framerate", "1", "-i", folder + "/pic%04d.png", "-c:v",
            "libx264", "-r", "30", "-pix_fmt", "yuv420p", name]
     return subprocess.call(cmd)
 
 
-def main():
+def main(screen_name, limit):
     print("Starting process")
     api = None
     try:
         api = get_api()
     except Exception as e:
         print(str(e))
-        exit(1)
-    screen_name = input("Enter the User ID: ")
+        raise e
     media_files = get_media_files(api, screen_name)
-    print("Images to be downloaded %d" % min(len(media_files), 100))
+    print("Images to be downloaded %d" % min(len(media_files), limit))
     if media_files:
         tmp_dir = "tmp_%d" % (int(time()))
-        download_files(media_files, tmp_dir)
+        download_files(media_files, tmp_dir, limit=limit)
         create_movie(tmp_dir + ".mp4", tmp_dir)
         shutil.rmtree(tmp_dir)
+    return tmp_dir + ".mp4"
 
 
 if __name__ == "__main__":
-    main()
+    screen_name = input("Enter the User ID: ")
+    print(main(screen_name, limit=20))
