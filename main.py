@@ -9,6 +9,13 @@ from utils.ffmpeg import create_movie
 
 
 def main(screen_name, limit):
+    """
+    Processes the screen name, fetches user tweets, creates video out of the
+    images posted by the user and adds description.
+    :param screen_name:
+    :param limit:
+    :return: file name
+    """
     print("Starting process")
     api = None
     try:
