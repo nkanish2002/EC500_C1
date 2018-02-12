@@ -36,3 +36,14 @@ export GOOGLE_APPLICATION_CREDENTIALS=/Path/To/JSON/Project-sla123kn31231.json
 If you have completed all the above steps, simply execute the `main.py` file: `python3 main.py` or `./main.py`
 For the first run, the app will ask you to login to your twitter account, it should automatically open a browser with the link. Once you authenticate you will have to paste the pincode back into the CLI.
 Then the app will ask you to enter any screen_name associated with a valid twitter account and in the end it will print the name of the movie generated. If not movie could be generated, it will print `None`.
+
+## Extend
+
+If you would like to extend the code and improve it/use it in your own program, follow the guide below:-
+
+```python
+from main import main
+
+mp4_file = main(screen_name="HDWallpaperFree", limit=10)
+
+```
