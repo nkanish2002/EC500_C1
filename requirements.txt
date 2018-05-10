@@ -4,4 +4,4 @@ ffmpy
 wget
 pillow
 google-cloud-vision
-
+pymongo
